@@ -2,3 +2,12 @@
 /data/train
 /data/valid
 *.jpg
+master-magnet-414308-23a8bbb0c34f.json
+/ObjectDetection-FasterRCNN-master/data_configs
+/ObjectDetection-FasterRCNN-master/example_test_data
+/ObjectDetection-FasterRCNN-master/models
+/ObjectDetection-FasterRCNN-master/notebook_examples
+/ObjectDetection-FasterRCNN-master/readme_images
+/ObjectDetection-FasterRCNN-master/torch_utils
+/ObjectDetection-FasterRCNN-master/utils
+/ObjectDetection-FasterRCNN-master/data
