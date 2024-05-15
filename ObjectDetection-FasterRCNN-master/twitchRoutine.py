@@ -157,8 +157,8 @@ total_fps = 0
 gcs_link = "https://storage.googleapis.com/dl_cnn_a3_3dprintfail/link.txt"
 while True:
     content = fetch_content_from_gcs(gcs_link)
-    #streams = streamlink.streams(content)
-    streams = streamlink.streams('https://www.twitch.tv/iamfallfromgrace')
+    streams = streamlink.streams(content)
+    #streams = streamlink.streams('https://www.twitch.tv/saltybet')
     if "best" not in streams.keys():
         continue
     

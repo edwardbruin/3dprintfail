@@ -11,3 +11,4 @@ master-magnet-414308-23a8bbb0c34f.json
 /ObjectDetection-FasterRCNN-master/torch_utils
 /ObjectDetection-FasterRCNN-master/utils
 /ObjectDetection-FasterRCNN-master/data
+*.json
