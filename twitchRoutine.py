@@ -1,86 +1,60 @@
-import numpy as np
-import cv2
-import torch
-import glob as glob
-import os
-import time
-import argparse
-import yaml
-import matplotlib.pyplot as plt
-import sys
-
-sys.path.insert(0, 'ObjectDetection-FasterRCNN-master')
-from models.create_fasterrcnn_model import create_model
-from utils.annotations import inference_annotations
-from utils.general import set_infer_dir
-from utils.transforms import infer_transforms, resize
-
-import os
-import subprocess
-import requests
+import cv2, requests, streamlink
 from random import choice
-import cv2
-import streamlink
-
-import os
-import subprocess
-import requests
-from random import choice
-import cv2
-import streamlink
-
 from google.cloud import storage
+from ultralytics import YOLO
+import json
+import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime
 
+image_path_input = 'output_image.jpg'
+image_path_output = 'infer_image.jpg'
+model = YOLO('yoloweights.pt')
 service_account_file = 'master-magnet-414308-23a8bbb0c34f.json'
 storage_client = storage.Client.from_service_account_json(service_account_file)
+
+def SendMail(email_text, ImgFileName = 'infer_image.jpg', 
+             Server='smtp.gmail.com',
+             Port=587,
+             UserName='edwardnbruin@gmail.com', 
+             passwordFile='password.txt',
+             From='edwardnbruin@gmail.com', 
+             To='skmojo@gmail.com'):
+    
+    with open(ImgFileName, 'rb') as f:
+        img_data = f.read()
+    
+    with open(passwordFile) as f:
+        UserPassword = f.readline()
+    
+    msg = MIMEMultipart()
+    msg['Subject'] = 'error detected during print'
+    msg['From'] = 'edwardnbruin@gmail.com'
+    msg['To'] = 'skmojo@gmail.com'
+
+    text = MIMEText(email_text)
+    msg.attach(text)
+    image = MIMEImage(img_data, name=os.path.basename(ImgFileName))
+    msg.attach(image)
+
+    s = smtplib.SMTP(Server, Port)
+    s.ehlo()
+    s.starttls()
+    s.ehlo()
+    s.login(UserName, UserPassword)
+    try:
+        s.sendmail(From, To, msg.as_string())
+    except:
+        pass
+    s.quit()
 
 def upload_to_bucket(blob_name, content, bucket_name):
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(blob_name)
     blob.upload_from_filename(content)
-    
-def repeat():
-    # Get the image file name for saving output later on.
-    image_name = test_image.split(os.path.sep)[-1].split('.')[0]
-    orig_image = cv2.imread(test_image)
-    frame_height, frame_width, _ = orig_image.shape
-    
-    RESIZE_TO = frame_width
-    # orig_image = image.copy()
-    image_resized = resize(orig_image, RESIZE_TO)
-    image = image_resized.copy()
-    # BGR to RGB
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    image = infer_transforms(image)
-    # Add batch dimension.
-    image = torch.unsqueeze(image, 0)
-    start_time = time.time()
-    with torch.no_grad():
-        outputs = model(image.to(DEVICE))
-    end_time = time.time()
-    
-
-
-    outputs = [{k: v.to('cpu') for k, v in t.items()} for t in outputs]
-    if len(outputs[0]['boxes']) != 0:
-        orig_image = inference_annotations(
-            outputs, 
-            detection_threshold, 
-            CLASSES,
-            COLORS, 
-            orig_image, 
-            image_resized,
-            args
-        )
-        if args['show_image']:
-            cv2.imshow('Prediction', orig_image)
-            cv2.waitKey(1)
-        if args['mpl_show']:
-            plt.imshow(orig_image[:, :, ::-1])
-            plt.axis('off')
-            plt.show()
-    cv2.imwrite(f"./infer_image.jpg", orig_image)
-
     
 def fetch_content_from_gcs(link):
     alp = list(map(chr, range(97, 123)))
@@ -94,56 +68,13 @@ def fetch_content_from_gcs(link):
     except requests.RequestException as e:
         return f"Error: {e}"
 
-args = {}
-args['input'] = './output_image.jpg' # set by user per inference
-
-args['config'] = None
-args['model']= None
-args['weights'] = '/mnt/c/Users/edwar/OneDrive - UTS/jupyter notebooks/42028/3dprintfail/best_model.pth'
-args['mpl_show'] = None
-args['device']=torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-args['img_size'] = None
-args['threshold'] = 0.3
-args['no_labels'] = None
-args['show_image'] = None
-
-data_configs = None
-DEVICE = args['device']
-OUT_DIR = set_infer_dir()
-
-checkpoint = torch.load(args['weights'], map_location=DEVICE)
-# If config file is not given, load from model dictionary.
-if data_configs is None:
-    data_configs = True
-    NUM_CLASSES = checkpoint['config']['NC']
-    CLASSES = checkpoint['config']['CLASSES']
-try:
-    print('Building from model name arguments...')
-    build_model = create_model[str(args['model'])]
-except:
-    build_model = create_model[checkpoint['model_name']]
-model = build_model(num_classes=NUM_CLASSES, coco_model=False)
-model.load_state_dict(checkpoint['model_state_dict'])
-
-model.to(DEVICE).eval()
-
-COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
-
-test_image = args['input']
-# Define the detection threshold any detection having
-# score below this will be discarded.
-detection_threshold = args['threshold']
-
-# To count the total number of frames iterated through.
-frame_count = 0
-# To keep adding the frames' FPS.
-total_fps = 0
-
 gcs_link = "https://storage.googleapis.com/dl_cnn_a3_3dprintfail/link.txt"
+gcs_email = "https://storage.googleapis.com/dl_cnn_a3_3dprintfail/email_address.txt"
+prevrun = 'last_run_datetime.txt'
+
 while True:
     content = fetch_content_from_gcs(gcs_link)
     streams = streamlink.streams(content)
-    #streams = streamlink.streams('https://www.twitch.tv/saltybet')
     if "best" not in streams.keys():
         continue
     
@@ -151,7 +82,36 @@ while True:
         
     vcap = cv2.VideoCapture(stream_url)
     image = vcap.read()[1]
-    cv2.imwrite('output_image.jpg', image)
+    cv2.imwrite(image_path_input, image)
 
-    repeat()
-    upload_to_bucket('infer_image.jpg', './infer_image.jpg', 'dl_cnn_a3_3dprintfail')
+    #results = model(image_path_input)
+    results = model(image_path_input, verbose=False)
+    if results[0].verbose() == '(no detections), ':
+        continue
+
+    try: 
+        with open(prevrun, 'r') as f:
+            last_run_datetime = datetime.strptime(f.read(), "%d/%m/%Y %H:%M:%S")
+        delta = datetime.now() - last_run_datetime
+    except:
+        with open(prevrun, 'w') as f:
+            f.write(datetime.strftime(datetime.now(),"%d/%m/%Y %H:%M:%S"))
+        continue
+
+    if (delta.total_seconds() < 30):
+        continue
+
+    with open(prevrun, 'w') as f:
+        f.write(datetime.strftime(datetime.now(),"%d/%m/%Y %H:%M:%S"))
+    
+    cv2.imwrite(image_path_output, results[0].plot())
+    
+    json_object = json.loads(results[0].tojson())
+    out_string = ''
+    for det in json_object:
+        out_string += str(int(det['confidence']*100)) + '% confident occurence of '+ det['name']+'''
+'''
+    to_address = fetch_content_from_gcs(gcs_email)
+    SendMail(out_string, To=to_address)
+    
+    upload_to_bucket('infer_image.jpg', f'./{image_path_output}', 'dl_cnn_a3_3dprintfail')
