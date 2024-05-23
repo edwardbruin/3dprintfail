@@ -1,45 +1,87 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-    <link href="https://cdn.jsdelivr.net/npm/beercss@3.5.6/dist/cdn/beer.min.css" rel="stylesheet">
-
-        
-    <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.5.6/dist/cdn/beer.min.js"></script>
-        
-    <link rel="stylesheet" href="./style.css">
 </head>
-
 <body>
-    <div
-        style="background-image: url('https://storage.googleapis.com/dl_cnn_a3_3dprintfail/infer_image.jpg'); width: 100%; height: 100%; position: fixed; top: 0; left: 0; z-index: -1;">
-    </div>
-    <div class="main-body medium middle-align center-align">
-        <div>
-            <i class="extra">live_tv</i>
-            <h5>Enter Channel Name</h5>
-            <p>To Start Stream</p>
-            <div class="space"></div>
-            <nav class="no-space">
-                <div class="max field border left-round">
-                    <input id="channel-name" placeholder="Channel Name">
-                </div>
-                <button onclick="navigate()" type="submit" class="large right-round">Go</button>
-            </nav>
-        </div>
-    </div>
-</body>
-<script>
-    function navigate() {
-        const channelName = document.getElementById('channel-name').value;
-        if (channelName === "" || channelName === null) {
-            alert("Please Enter Channel Name");
-            return;
-        }
-        else {
-            window.location.href = '/view-stream.html?channel=' + channelName;
-        }
-    }
-</script>
+Enter Twitch channel name:
+<form id="myForm" action="/submit" method="post">
+ <input type="text" id="message" name="message" value="https://www.twitch.tv/skmojotv" size="50">
+ <button type="submit">
+Submit</button>
+ </form>
 
+ Enter destination email address:
+<form id="myFormEmail" action="/submit" method="post">
+ <input type="text" id="emailAddress" name="emailAddress" value="skmojo@gmail.com" size="50">
+ <button type="submit">
+Submit</button>
+ </form>
+<p>
+    <button onclick="reloadImageButton()">Reload Image</button><label for="refreshCheckbox">
+                <input type="checkbox" id="refreshCheckbox"> Auto refresh
+            </label>
+    </p>
+	            
+<img id="myImage" src="https://storage.googleapis.com/dl_cnn_a3_3dprintfail/infer_image.jpg" alt="Example Image">
+    <script>
+const image = document.getElementById('myImage');
+        const characters = 'abcdefghijklmnopqrstuvwxyz';
+        image.src = "https://storage.googleapis.com/dl_cnn_a3_3dprintfail/infer_image.jpg?" + rc() + rc() + "=" + rc() + rc();
+
+        setInterval(reloadImage, 2000);
+
+        function rc() {
+            const randomIndex = Math.floor(Math.random() * characters.length);
+            return characters.charAt(randomIndex);
+        }
+
+        function reloadImage() {
+            if (refreshCheckbox.checked) {
+                image.src = "https://storage.googleapis.com/dl_cnn_a3_3dprintfail/infer_image.jpg?" + rc() + rc() + "=" + rc() + rc();
+            }
+        }
+
+        function reloadImageButton() {
+            image.src = "https://storage.googleapis.com/dl_cnn_a3_3dprintfail/infer_image.jpg?" + rc() + rc() + "=" + rc() + rc();
+        }
+
+        function navigate() {
+            const channelName = document.getElementById('channel-name').value;
+            if (channelName === "" || channelName === null) {
+                alert("Please Enter Channel Name");
+                return;
+            } else {
+                window.location.href = '/view-stream.html?channel=' + channelName;
+            }
+        }
+
+        document.getElementById('myForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+            const link = document.getElementById('message').value;
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/function-1?message=' + link, true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    alert('Response: ' + xhr.responseText);
+                }
+            };
+            xhr.send('message=' + encodeURIComponent(link));
+        });
+
+        document.getElementById('myFormEmail').addEventListener('submit', function (event) {
+            event.preventDefault();
+            const emailAddress = document.getElementById('emailAddress').value;
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/function-1?emailAddress=' + emailAddress, true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    alert('Response: ' + xhr.responseText);
+                }
+            };
+            xhr.send('emailAddress=' + encodeURIComponent(emailAddress));
+        });
+ </script>
+</body>
 </html>

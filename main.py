@@ -19,8 +19,11 @@ def hello_http(request):
         message = request_args['message']
         upload_to_bucket('link.txt', message, 'dl_cnn_a3_3dprintfail')
         response_content = 'now monitoring ' + message
-    else:
-        message = 'https://www.twitch.tv/skmojotv'
+
+    if request_args and 'emailAddress' in request_args:
+        emailAddress = request_args['emailAddress']
+        upload_to_bucket('email_address.txt', emailAddress, 'dl_cnn_a3_3dprintfail')
+        response_content = 'sending alerts to ' + emailAddress
         
     
     return(response_content)
