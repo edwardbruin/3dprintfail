@@ -1,0 +1,8 @@
+to use this code, you will need a few things
+a link to a video stream (and presumably control over it)
+a destination email address to send alerts
+The code is currently seeks for these from a google bucket. modify to point to your endpoint (no, I don't know what a config file is)
+
+You will also need:
+a google account that can use an app password (if newly created accounts are not working, try a mature account)
+our weights file for YOLOv8
