@@ -6,3 +6,5 @@ The code is currently seeks for these from a google bucket. modify to point to y
 You will also need:
 a google account that can use an app password (if newly created accounts are not working, try a mature account)
 our weights file for YOLOv8
+
+after that, run the file twitchRoutine.py
