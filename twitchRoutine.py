@@ -1,39 +1,67 @@
+import os
+import re
+
+def check_email_format(email):
+    email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    assert re.match(email_pattern, email), f"Invalid email address: {email}"
+
+def check_password_format(password):
+    password_pattern = r"^[a-z]{4} [a-z]{4} [a-z]{4} [a-z]{4}$"
+    assert re.match(password_pattern, password), 'provided app password is not in correct format. to generate app password, go to https://myaccount.google.com/apppasswords'
+
+assert os.path.exists('emaildetails.txt'), "File emaildetails.txt does not exist. create this file and write your email address and app password. https://myaccount.google.com/apppasswords"
+assert os.path.exists('yoloweights.pt'), "File yoloweights.pt does not exist, download this file from https://github.com/edwardbruin/3dprintfail/blob/main/yoloweights.pt"
+
+# Read the first two lines from 'emaildetails.txt'
+with open('emaildetails.txt', 'r') as file:
+    lines = file.readlines()
+    assert len(lines) >= 2, "Not enough lines in 'emaildetails.txt'."
+
+# Check email address format
+email_address = lines[0].strip()
+check_email_format(email_address)
+
+# Check password format
+password = lines[1].strip()
+check_password_format(password)
+
+print("emaildetails.txt is present")
+
 import cv2, requests, streamlink
 from random import choice
 from google.cloud import storage
 from ultralytics import YOLO
 import json
-import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 
+uploading = False                                               # change to true to enable uploading to bucket to update website
+service_account_file = 'master-magnet-414308-23a8bbb0c34f.json' # you will need to include a credentials file to update website
+if uploading:
+    storage_client = storage.Client.from_service_account_json(service_account_file)
+
 image_path_input = 'output_image.jpg'
 image_path_output = 'infer_image.jpg'
 model = YOLO('yoloweights.pt')
-service_account_file = 'master-magnet-414308-23a8bbb0c34f.json'
-storage_client = storage.Client.from_service_account_json(service_account_file)
 
 def SendMail(email_text, ImgFileName = 'infer_image.jpg', 
              Server='smtp.gmail.com',
              Port=587,
-             UserName='edwardnbruin@gmail.com', 
-             passwordFile='password.txt',
-             From='edwardnbruin@gmail.com', 
+             UserName=email_address, 
+             UserPassword=password,
+             From=email_address, 
              To='skmojo@gmail.com'):
     
     with open(ImgFileName, 'rb') as f:
         img_data = f.read()
     
-    with open(passwordFile) as f:
-        UserPassword = f.readline()
-    
     msg = MIMEMultipart()
     msg['Subject'] = 'error detected during print'
-    msg['From'] = 'edwardnbruin@gmail.com'
-    msg['To'] = 'skmojo@gmail.com'
+    msg['From'] = From
+    msg['To'] = To
 
     text = MIMEText(email_text)
     msg.attach(text)
@@ -72,6 +100,11 @@ gcs_link = "https://storage.googleapis.com/dl_cnn_a3_3dprintfail/link.txt"
 gcs_email = "https://storage.googleapis.com/dl_cnn_a3_3dprintfail/email_address.txt"
 prevrun = 'last_run_datetime.txt'
 
+print('''_ no detection
+e detected error and sent email, uploaded image
+x detected error, awaiting 30 second timeout
+''')
+
 while True:
     content = fetch_content_from_gcs(gcs_link)
     streams = streamlink.streams(content)
@@ -82,11 +115,15 @@ while True:
         
     vcap = cv2.VideoCapture(stream_url)
     image = vcap.read()[1]
-    cv2.imwrite(image_path_input, image)
+    try:
+        cv2.imwrite(image_path_input, image)
+    except:
+        continue
 
     #results = model(image_path_input)
     results = model(image_path_input, verbose=False)
     if results[0].verbose() == '(no detections), ':
+        print('_', end='')
         continue
 
     try: 
@@ -99,8 +136,10 @@ while True:
         continue
 
     if (delta.total_seconds() < 30):
+        print('x', end='')
         continue
 
+    print('e', end='')
     with open(prevrun, 'w') as f:
         f.write(datetime.strftime(datetime.now(),"%d/%m/%Y %H:%M:%S"))
     
@@ -114,4 +153,5 @@ while True:
     to_address = fetch_content_from_gcs(gcs_email)
     SendMail(out_string, To=to_address)
     
-    upload_to_bucket('infer_image.jpg', f'./{image_path_output}', 'dl_cnn_a3_3dprintfail')
+    if uploading:
+        upload_to_bucket('infer_image.jpg', f'./{image_path_output}', 'dl_cnn_a3_3dprintfail')
